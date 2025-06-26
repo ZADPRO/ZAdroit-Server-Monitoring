@@ -92,7 +92,7 @@ import twilio from "twilio";
 // Twilio Setup
 const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
 const TWILIO_FROM = '+17432289693';
-const SMS_NUMBERS = ['+918290202119']; // Add more if needed
+const SMS_NUMBERS = ['+918270202119']; // Add more if needed
 
 // Scheduled every 5 minutes
 const handler = schedule("*/5 * * * *", async () => {
@@ -138,14 +138,20 @@ const handler = schedule("*/5 * * * *", async () => {
           "indumathi.r@zadroit.com",
         ],
         subject: "🚨 API DOWN ALERT",
-        html: `
-          <div style="font-family: Arial, sans-serif;">
-            <h2 style="color: #d32f2f;">🚨 Server/API Down Alert</h2>
-            <p><strong>Time (IST):</strong> ${istTime}</p>
-            <p><strong>Issue:</strong> Failed to reach the target API endpoint.</p>
-            <p><strong>Error:</strong> ${error.message}</p>
-          </div>
-        `,
+         html: `
+           <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; max-width: 600px;">
+             <h2 style="color: #d32f2f;">🚨 Server/API Down Alert</h2>
+             <p><strong>Time (IST):</strong> ${now}</p>
+             <p><strong>Issue:</strong> Failed to reach the target API endpoint.</p>
+             <p style="background-color: #fce4ec; padding: 10px; border-left: 4px solid #d32f2f;">
+               <strong>Error Message:</strong><br />
+               ${error.message}
+             </p>
+             <p style="margin-top: 20px;">Please investigate the issue immediately.</p>
+             <hr style="margin: 30px 0;" />
+             <p style="font-size: 12px; color: #888;">This is an automated alert from your monitoring script.</p>
+           </div>
+         `,
       });
 
       console.log("📧 Email sent.");
