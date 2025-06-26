@@ -190,12 +190,12 @@ import nodemailer from "nodemailer";
 import decrypt from "../../Helper";
 import twilio from "twilio";
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, push } from "firebase/database";
+import { getDatabase, ref, push, set, get } from "firebase/database";
 
 // Twilio Setup
 const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
 const TWILIO_FROM = "+17432289693";
-const SMS_NUMBERS = ["+918270202119"]; // Add more if needed
+const SMS_NUMBERS = ["+918270202119"];
 
 // Firebase Setup
 const firebaseConfig = {
@@ -211,11 +211,8 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const database = getDatabase(firebaseApp);
 
-// Helper to log status in Firebase
-const logStatusToFirebase = async (
-  status: "up" | "down",
-  message: string | null
-) => {
+// Log to Firebase
+const logStatusToFirebase = async (status, message) => {
   const now = new Date();
   const istTime = now.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
 
@@ -225,6 +222,28 @@ const logStatusToFirebase = async (
     time: istTime,
     message: message || null,
   });
+};
+
+// Check if alert should be triggered (based on Firebase lock)
+const shouldLogDown = async () => {
+  const lockRef = ref(database, "api-status-latest");
+  const snapshot = await get(lockRef);
+  const lastLog = snapshot.val();
+
+  if (
+    lastLog &&
+    lastLog.status === "down" &&
+    Date.now() - new Date(lastLog.time).getTime() < 60 * 1000
+  ) {
+    return false; // Already alerted within the last 60 seconds
+  }
+
+  await set(lockRef, {
+    status: "down",
+    time: new Date().toISOString(),
+  });
+
+  return true;
 };
 
 // Scheduled every 5 minutes
@@ -237,7 +256,7 @@ const handler = schedule("*/5 * * * *", async () => {
 
   try {
     const response = await axios.get(
-      "https://medpredit-commercial.brightoncloudtech.com/api/AdminRoutes/CheckAPI"
+      "https://medpredit-commercial.brightoncloudtech.com/api/AdminRoutes/CheckAP"
     );
 
     const encryptionKey = process.env.ENCRYPTION_KEY;
@@ -246,7 +265,6 @@ const handler = schedule("*/5 * * * *", async () => {
     const data = decrypt(response.data[1], response.data[0], encryptionKey);
     console.log(`✅ API Success at ${istTime}`);
 
-    // ✅ Log success in Firebase
     await logStatusToFirebase("up", null);
 
     return {
@@ -256,10 +274,17 @@ const handler = schedule("*/5 * * * *", async () => {
   } catch (error) {
     console.error(`❌ API Failed at ${istTime}: ${error.message}`);
 
-    // ❌ Log failure in Firebase
+    const canAlert = await shouldLogDown();
+    if (!canAlert) {
+      console.log("⚠️ Skipping duplicate down alert.");
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ skipped: true }),
+      };
+    }
+
     await logStatusToFirebase("down", error.message);
 
-    // Email alert
     try {
       const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -274,27 +299,25 @@ const handler = schedule("*/5 * * * *", async () => {
         to: ["vijay.loganathan@zadroit.com"],
         subject: "🚨 API DOWN ALERT",
         html: `
-           <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; max-width: 600px;">
-             <h2 style="color: #d32f2f;">🚨 Server/API Down Alert</h2>
-             <p><strong>Time (IST):</strong> ${now}</p>
-             <p><strong>Issue:</strong> Failed to reach the target API endpoint.</p>
-             <p style="background-color: #fce4ec; padding: 10px; border-left: 4px solid #d32f2f;">
-               <strong>Error Message:</strong><br />
-               ${error.message}
-             </p>
-             <p style="margin-top: 20px;">Please investigate the issue immediately.</p>
-             <hr style="margin: 30px 0;" />
-             <p style="font-size: 12px; color: #888;">This is an automated alert from your monitoring script.</p>
-           </div>
-         `,
+          <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #fff; max-width: 600px;">
+            <h2 style="color: #d32f2f;">🚨 Server/API Down Alert</h2>
+            <p><strong>Time (IST):</strong> ${now}</p>
+            <p><strong>Issue:</strong> Failed to reach the target API endpoint.</p>
+            <p style="background-color: #fce4ec; padding: 10px; border-left: 4px solid #d32f2f;">
+              <strong>Error Message:</strong><br />
+              ${error.message}
+            </p>
+            <p style="margin-top: 20px;">Please investigate the issue immediately.</p>
+            <hr style="margin: 30px 0;" />
+            <p style="font-size: 12px; color: #888;">This is an automated alert from your monitoring script.</p>
+          </div>
+        `,
       });
-
       console.log("📧 Email sent.");
     } catch (e) {
       console.error("Email Error:", e.message);
     }
 
-    // SMS alert
     try {
       await Promise.all(
         SMS_NUMBERS.map((to) =>
