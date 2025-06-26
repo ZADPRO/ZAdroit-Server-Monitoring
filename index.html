@@ -105,6 +105,7 @@
         tbody.textContent = "";
         const rows = [];
         snap.forEach((child) => rows.push(child.val()));
+        console.log("\n\n", rows, "\n\n");
         rows.reverse().forEach((log) => tbody.appendChild(buildRow(log)));
       });
     </script>
