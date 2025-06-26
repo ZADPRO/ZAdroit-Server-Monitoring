@@ -132,9 +132,9 @@ const handler = schedule("*/5 * * * *", async () => {
       await transporter.sendMail({
         from: process.env.MAIL_USER,
         to: [
-          "vijay.loganathan@zadroit.com",
-          "gokul.m@zadroit.com",
-          "thirukumara.d@zadroit.com",
+          // "vijay.loganathan@zadroit.com",
+          // "gokul.m@zadroit.com",
+          // "thirukumara.d@zadroit.com",
           "indumathi.r@zadroit.com",
         ],
         subject: "🚨 API DOWN ALERT",
