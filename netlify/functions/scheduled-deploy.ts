@@ -91,7 +91,7 @@ import twilio from "twilio";
 
 // Twilio Setup
 const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
-const TWILIO_FROM = '+919091361308';
+const TWILIO_FROM = '+17432289693';
 const SMS_NUMBERS = ['+918290202119']; // Add more if needed
 
 // Scheduled every 5 minutes
