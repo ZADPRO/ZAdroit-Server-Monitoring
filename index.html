@@ -7,77 +7,154 @@
     <style>
       body {
         font-family: system-ui, sans-serif;
-        margin: 2rem;
+        margin: 1rem;
         background: #fafafa;
       }
+
       h1 {
-        margin-bottom: 1rem;
+        margin: 0;
+        font-size: 1.5rem;
       }
+
+      .Header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+
+      .stats {
+        font-size: 0.95rem;
+        background: #e0f2fe;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        color: #0369a1;
+        font-weight: 600;
+      }
+
       .filters {
         display: flex;
         gap: 1rem;
-        margin-bottom: 1rem;
         flex-wrap: wrap;
       }
-      .filters label {
-        display: block;
-        margin-bottom: 0.25rem;
-        font-weight: bold;
+
+      .filters div {
+        display: flex;
+        flex-direction: column;
+        min-width: 140px;
       }
+
+      .filters label {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.4rem;
+        color: #333;
+      }
+
+      .filters input[type="date"],
+      .filters select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        font-size: 1rem;
+        background: #fff;
+        color: #333;
+        transition: border 0.2s ease;
+      }
+
+      .filters input[type="date"]:focus,
+      .filters select:focus {
+        border-color: #3b82f6;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+      }
+
+      .table-wrapper {
+        max-height: 500px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+
       table {
         width: 100%;
+        min-width: 600px;
         border-collapse: collapse;
         background: #fff;
         box-shadow: 0 2px 4px #0002;
       }
+
       th,
       td {
         padding: 0.75rem 1rem;
         border-bottom: 1px solid #eee;
         text-align: left;
       }
+
       th {
         background: #f3f4f6;
       }
+
       tr:last-child td {
         border-bottom: none;
       }
+
       .up {
         color: #2e7d32;
         font-weight: 600;
       }
+
       .down {
         color: #d32f2f;
         font-weight: 600;
       }
-      .table-wrapper {
-        max-height: 500px;
-        overflow-y: auto;
-        border: 1px solid #ddd;
-        border-radius: 6px;
-      }
+
       @media (max-width: 600px) {
+        h1 {
+          font-size: 1.25rem;
+        }
+
+        .filters {
+          flex-direction: column;
+        }
+
         td:nth-child(3) {
           word-break: break-word;
+        }
+
+        .Header {
+          flex-direction: column;
+        }
+
+        .stats {
+          margin-top: 0.5rem;
         }
       }
     </style>
   </head>
   <body>
-    <h1>🚦 API Status Logs (Realtime)</h1>
-
-    <div class="filters">
+    <div class="Header">
       <div>
-        <label for="filter-date">Filter by Date:</label>
-        <input type="date" id="filter-date" />
+        <h1>🚦 API Status Logs</h1>
       </div>
       <div>
-        <label for="filter-status">Filter by Status:</label>
-        <select id="filter-status">
-          <option value="">All</option>
-          <option value="up">UP</option>
-          <option value="down">DOWN</option>
-        </select>
+        <div id="log-stats" class="stats">Total Count : UP: 0 | DOWN: 0</div>
+      </div>
+      <div class="filters">
+        <div>
+          <label for="filter-date">📅 Filter by Date</label>
+          <input type="date" id="filter-date" />
+        </div>
+        <div>
+          <label for="filter-status">📊 Filter by Status</label>
+          <select id="filter-status">
+            <option value="">All</option>
+            <option value="up">UP</option>
+            <option value="down">DOWN</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -116,8 +193,8 @@
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
       const tbody = document.getElementById("log-body");
+      const statsDiv = document.getElementById("log-stats");
 
-      // Store full data for filtering
       let allLogs = [];
 
       function buildRow({ time, status, message }) {
@@ -139,6 +216,12 @@
         });
       }
 
+      function updateStats(logs) {
+        const upCount = logs.filter((l) => l.status === "up").length;
+        const downCount = logs.filter((l) => l.status === "down").length;
+        statsDiv.textContent = `Total Count : UP: ${upCount} | DOWN: ${downCount}`;
+      }
+
       function filterLogs() {
         const selectedDate = document.getElementById("filter-date").value;
         const selectedStatus = document.getElementById("filter-status").value;
@@ -157,9 +240,17 @@
         });
 
         renderTable(filtered);
+        updateStats(filtered);
       }
 
-      // Listen to Firebase changes
+      function setTodayAsDefault() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, "0");
+        const dd = String(today.getDate()).padStart(2, "0");
+        document.getElementById("filter-date").value = `${yyyy}-${mm}-${dd}`;
+      }
+
       onValue(ref(db, "api-status-logs"), (snapshot) => {
         const rows = [];
         snapshot.forEach((child) => {
@@ -169,16 +260,17 @@
           }
         });
         allLogs = rows.reverse();
-        filterLogs(); // Apply filters after update
+        filterLogs(); // apply filter on load
       });
 
-      // Filter event listeners
       document
         .getElementById("filter-date")
         .addEventListener("input", filterLogs);
       document
         .getElementById("filter-status")
         .addEventListener("change", filterLogs);
+
+      setTodayAsDefault();
     </script>
   </body>
 </html>
