@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>API Status Logs</title>
 
-    <!-- Simple styling – tweak as you like -->
     <style>
       body {
         font-family: system-ui, sans-serif;
@@ -65,7 +64,10 @@
       </tbody>
     </table>
 
-    <!-- Firebase v10 (modular) – served straight from Google CDN -->
+    <!-- ✅ Inject Firebase Config -->
+    <script src="/firebase-config.js"></script>
+
+    <!-- ✅ Firebase SDK (modular) -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
@@ -74,42 +76,31 @@
         onValue,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-      /* 🔐 1.  Replace every field below with the SAME values you used on the server */
-      const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-        databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT_ID.appspot.com",
-        messagingSenderId: "SENDER_ID",
-        appId: "APP_ID",
-      };
+      const firebaseConfig = window.FIREBASE_CONFIG;
+      if (!firebaseConfig) {
+        document.body.innerHTML +=
+          "<p style='color:red;'>❌ Firebase config not loaded.</p>";
+        throw new Error("Missing FIREBASE_CONFIG");
+      }
 
-      /* 🚀 2.  Initialise & listen */
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
       const tbody = document.getElementById("log-body");
 
-      // Helper: render one <tr> element
       function buildRow({ time, status, message }) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
-        <td>${time}</td>
-        <td class="${status === "up" ? "up" : "down"}">
-          ${status === "up" ? "🟢 UP" : "🔴 DOWN"}
-        </td>
-        <td>${message ?? "-"}</td>
-      `;
+          <td>${time}</td>
+          <td class="${status === "up" ? "up" : "down"}">
+            ${status === "up" ? "🟢 UP" : "🔴 DOWN"}
+          </td>
+          <td>${message ? message : "-"}</td>
+        `;
         return tr;
       }
 
-      // Live listener (fires once with existing data, then on every change)
       onValue(ref(db, "api-status-logs"), (snap) => {
-        // Clear table body
         tbody.textContent = "";
-
-        // Firebase returns children in push-key order (chronological Asc).
-        // We’ll put newest first → collect & reverse.
         const rows = [];
         snap.forEach((child) => rows.push(child.val()));
         rows.reverse().forEach((log) => tbody.appendChild(buildRow(log)));
