@@ -64,9 +64,6 @@
       </tbody>
     </table>
 
-    <!-- ✅ Inject Firebase Config -->
-    <script src="/firebase-config.js"></script>
-
     <!-- ✅ Firebase SDK (modular) -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -76,12 +73,17 @@
         onValue,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-      const firebaseConfig = window.FIREBASE_CONFIG;
-      if (!firebaseConfig) {
-        document.body.innerHTML +=
-          "<p style='color:red;'>❌ Firebase config not loaded.</p>";
-        throw new Error("Missing FIREBASE_CONFIG");
-      }
+      // 🔐 Replace with your actual Firebase config values
+      const firebaseConfig = {
+        apiKey: "AIzaSyCJXcbU7R40OXlPdSzlcc3VRhgyGxV6DtQ", // ← Your API key here
+        authDomain: "api-monitor-87868.firebaseapp.com",
+        databaseURL:
+          "https://api-monitor-87868-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "api-monitor-87868",
+        storageBucket: "api-monitor-87868.firebasestorage.app",
+        messagingSenderId: "857330399639",
+        appId: "1:857330399639:web:5eecf7e35ff3c39a116cd2",
+      };
 
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
