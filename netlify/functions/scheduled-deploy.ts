@@ -78,29 +78,21 @@
 //   }
 // });
 
-// export { handler };
+
+
+
+// ------------------------------------------------------------------------
+
 import { schedule } from "@netlify/functions";
 import axios from "axios";
 import nodemailer from "nodemailer";
-import { initializeApp } from "firebase/app";
-import { getDatabase, ref, get, set } from "firebase/database";
 import decrypt from "../../Helper";
 import twilio from "twilio";
 
-// Firebase init
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  databaseURL: process.env.FIREBASE_DB_URL,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-};
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
 // Twilio Setup
 const twilioClient = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
-const TWILIO_FROM = '+919791361308';
-const SMS_NUMBERS = ['+918270202119']; // add more if needed
+const TWILIO_FROM = '+919091361308';
+const SMS_NUMBERS = ['+918290202119']; // Add more if needed
 
 // Scheduled every 5 minutes
 const handler = schedule("*/5 * * * *", async () => {
@@ -112,8 +104,9 @@ const handler = schedule("*/5 * * * *", async () => {
 
   try {
     const response = await axios.get(
-      "https://medpredit-commercial.brightoncloudtech.com/api/AdminRoutes/CheckAP"
+      "https://medpredit-commercial.brightoncloudtech.com/api/AdminRoutes/CheckAPI"
     );
+
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) throw new Error("ENCRYPTION_KEY missing");
 
@@ -126,76 +119,55 @@ const handler = schedule("*/5 * * * *", async () => {
   } catch (error) {
     console.error(`❌ API Failed at ${istTime}: ${error.message}`);
 
-    const refEmail = ref(db, "lastEmailSent");
-    const refSMS = ref(db, "lastSMSSent");
+    // Send email alert
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
+        },
+      });
 
-    const [emailSnap, smsSnap] = await Promise.all([get(refEmail), get(refSMS)]);
-    const lastEmailSent = emailSnap.exists() ? new Date(emailSnap.val()) : null;
-    const lastSMSSent = smsSnap.exists() ? new Date(smsSnap.val()) : null;
+      await transporter.sendMail({
+        from: process.env.MAIL_USER,
+        to: [
+          "vijay.loganathan@zadroit.com",
+          "gokul.m@zadroit.com",
+          "thirukumara.d@zadroit.com",
+          "indumathi.r@zadroit.com",
+        ],
+        subject: "🚨 API DOWN ALERT",
+        html: `
+          <div style="font-family: Arial, sans-serif;">
+            <h2 style="color: #d32f2f;">🚨 Server/API Down Alert</h2>
+            <p><strong>Time (IST):</strong> ${istTime}</p>
+            <p><strong>Issue:</strong> Failed to reach the target API endpoint.</p>
+            <p><strong>Error:</strong> ${error.message}</p>
+          </div>
+        `,
+      });
 
-    const nowTime = new Date();
-    const diffEmailMins = lastEmailSent ? Math.floor((nowTime.getTime() - lastEmailSent.getTime()) / (1000 * 60)) : Infinity;
-    const diffSMSMins = lastSMSSent ? Math.floor((nowTime.getTime() - lastSMSSent.getTime()) / (1000 * 60)) : Infinity;
-
-    // Send Email if 30 min passed
-    if (diffEmailMins >= 30) {
-      try {
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: {
-            user: process.env.MAIL_USER,
-            pass: process.env.MAIL_PASS,
-          },
-        });
-
-        await transporter.sendMail({
-          from: process.env.MAIL_USER,
-          to: [
-            // "vijay.loganathan@zadroit.com",
-            // "gokul.m@zadroit.com",
-            // "thirukumara.d@zadroit.com",
-            "indumathi.r@zadroit.com",
-          ],
-          subject: "🚨 API DOWN ALERT",
-          html: `
-            <div style="font-family: Arial, sans-serif;">
-              <h2 style="color: #d32f2f;">🚨 Server/API Down Alert</h2>
-              <p><strong>Time (IST):</strong> ${istTime}</p>
-              <p><strong>Issue:</strong> Failed to reach the target API endpoint.</p>
-              <p><strong>Error:</strong> ${error.message}</p>
-            </div>
-          `,
-        });
-
-        await set(refEmail, nowTime.toISOString());
-        console.log("📧 Email sent.");
-      } catch (e) {
-        console.error("Email Error:", e.message);
-      }
-    } else {
-      console.log(`📧 Email skipped (last sent ${diffEmailMins} min ago)`);
+      console.log("📧 Email sent.");
+    } catch (e) {
+      console.error("Email Error:", e.message);
     }
 
-    // Send SMS if 30 min passed
-    if (diffSMSMins >= 30) {
-      try {
-        await Promise.all(
-          SMS_NUMBERS.map((to) =>
-            twilioClient.messages.create({
-              body: `🚨 ALERT: API is down at ${istTime}. Error: ${error.message}`,
-              from: TWILIO_FROM,
-              to,
-            })
-          )
-        );
+    // Send SMS alert
+    try {
+      await Promise.all(
+        SMS_NUMBERS.map((to) =>
+          twilioClient.messages.create({
+            body: `🚨 ALERT: API is down at ${istTime}. Error: ${error.message}`,
+            from: TWILIO_FROM,
+            to,
+          })
+        )
+      );
 
-        await set(refSMS, nowTime.toISOString());
-        console.log("📱 SMS sent.");
-      } catch (smsErr) {
-        console.error("SMS Error:", smsErr.message);
-      }
-    } else {
-      console.log(`📱 SMS skipped (last sent ${diffSMSMins} min ago)`);
+      console.log("📱 SMS sent.");
+    } catch (smsErr) {
+      console.error("SMS Error:", smsErr.message);
     }
 
     return {
@@ -206,5 +178,6 @@ const handler = schedule("*/5 * * * *", async () => {
 });
 
 export { handler };
+
 
 
