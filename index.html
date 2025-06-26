@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>API Status Logs</title>
-
     <style>
       body {
         font-family: system-ui, sans-serif;
@@ -42,15 +41,13 @@
       }
       @media (max-width: 600px) {
         td:nth-child(3) {
-          word-break: break-all;
+          word-break: break-word;
         }
       }
     </style>
   </head>
-
   <body>
     <h1>🚦 API Status Logs (Realtime)</h1>
-
     <table>
       <thead>
         <tr>
@@ -59,12 +56,10 @@
           <th>Error Message</th>
         </tr>
       </thead>
-      <tbody id="log-body">
-        <!-- rows injected by JS -->
-      </tbody>
+      <tbody id="log-body"></tbody>
     </table>
 
-    <!-- ✅ Firebase SDK (modular) -->
+    <!-- ✅ Firebase SDK -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
       import {
@@ -73,7 +68,7 @@
         onValue,
       } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-      // 🔐 Replace with your actual Firebase config values
+      // ✅ Replace with your actual Firebase config
       const firebaseConfig = {
         apiKey: "AIzaSyCJXcbU7R40OXlPdSzlcc3VRhgyGxV6DtQ", // ← Your API key here
         authDomain: "api-monitor-87868.firebaseapp.com",
@@ -89,6 +84,7 @@
       const db = getDatabase(app);
       const tbody = document.getElementById("log-body");
 
+      // ✅ Helper to render each row
       function buildRow({ time, status, message }) {
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -96,17 +92,33 @@
           <td class="${status === "up" ? "up" : "down"}">
             ${status === "up" ? "🟢 UP" : "🔴 DOWN"}
           </td>
-          <td>${message ? message : "-"}</td>
+          <td>${message || "-"}</td>
         `;
         return tr;
       }
 
-      onValue(ref(db, "api-status-logs"), (snap) => {
-        tbody.textContent = "";
+      // ✅ Fetch and render data
+      onValue(ref(db, "api-status-logs"), (snapshot) => {
         const rows = [];
-        snap.forEach((child) => rows.push(child.val()));
-        console.log("\n\n", rows, "\n\n");
-        rows.reverse().forEach((log) => tbody.appendChild(buildRow(log)));
+        snapshot.forEach((child) => {
+          const data = child.val();
+          if (data && data.time && data.status) {
+            rows.push(data);
+          }
+        });
+
+        // Newest first
+        rows.reverse();
+
+        // Clear old rows
+        tbody.innerHTML = "";
+
+        // Render all
+        rows.forEach((log) => {
+          tbody.appendChild(buildRow(log));
+        });
+
+        console.log("✅ Total logs rendered:", rows.length);
       });
     </script>
   </body>
