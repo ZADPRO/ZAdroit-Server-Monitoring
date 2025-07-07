@@ -774,7 +774,7 @@ const handler = schedule("*/5 * * * *", async () => {
     return await Promise.race([
       (async () => {
         const response = await axios.get(
-          "https://medpredit-commercial.brightoncloudtech.com/api/v1/UserRoutes/status",
+          "https://medpredit-commercial.brightoncloudtech.com/api/AdminRoutes/CheckAPI",
           { timeout: 7000 }
         );
         
@@ -793,7 +793,6 @@ const handler = schedule("*/5 * * * *", async () => {
         ) {
           throw new Error("Database error: " + data.message);
         }
-
         console.log(`✅ API Success at ${istTime}`);
         await logStatusToFirebase("up", null);
 
