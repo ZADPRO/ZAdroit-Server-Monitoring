@@ -489,8 +489,7 @@ const TWILIO_FROM = "+17432289693";
 const SMS_NUMBERS = [
   "+918270202119",
   "+919360257667",
-  "+919842653413",
-  "+918838565066",
+  "+919842653413"
 ]; // Add more if needed
 
 // Firebase Setup
@@ -546,8 +545,7 @@ const handleFailure = async (
       to: [
         "vijay.loganathan@zadroit.com",
         "thirukumara.d@zadroit.com",
-        "gokul.m@zadroit.com",
-        "prakash.n@zadroit.com",
+        "gokul.m@zadroit.com"
       ],
       subject: `🚨 ${issueType} ALERT`,
       html: `
